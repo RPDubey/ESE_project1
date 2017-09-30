@@ -12,16 +12,16 @@ conversion.c
 #ifndef FILE_CONVERSION
 #define FILE_CONVERSION
 
-# include "../../src/conversion.c"
+#include <stdint.h>
 
 /********************************************************************************
 @brief:Implements Integer to ASCII conversion
 
 This function converts data from standard Integer type(base 2 to 16) into an ASCII
-string and store it in the given memory location. 
-@param:Integer to be converted to ASCII, BASE, Pointer to location to store converted 
+string and store it in the given memory location.
+@param:Integer to be converted to ASCII, BASE, Pointer to location to store converted
 value.
-@return:length of the converted data.
+@return:length of the converted data. -1 in case of error
 ********************************************************************************/
 uint8_t my_itoa(int32_t, uint8_t*, uint32_t);
 
@@ -29,10 +29,10 @@ uint8_t my_itoa(int32_t, uint8_t*, uint32_t);
 /********************************************************************************
 @brief:Implements ASCII to Integer conversion
 
-This function converts data from ASCII to standard Integer type(base 2 to 16) 
-@param:Pointer to ascii string to be converted, Length of the ascii string, Base of 
+This function converts data from ASCII to standard Integer type(base 2 to 16)
+@param:Pointer to ascii string to be converted, Length of the ascii string, Base of
 converted integer
-@return: Converted Integer Value.
+@return: Converted Integer Value. -1 in case of error.
 ********************************************************************************/
 int32_t my_atoi( uint8_t*, uint8_t , uint32_t);
 
@@ -43,7 +43,7 @@ int32_t my_atoi( uint8_t*, uint8_t , uint32_t);
 This function converts array of data in memory from a Big Endian representation to
 a Little Endian.
 @param:Pointer to data, Length of data in bytes.
-@return: Converted Value on Success, Error if fails.
+@return: 1 on Success, -1 if fails.
 ********************************************************************************/
 int8_t big_to_little32( uint32_t*, uint32_t);
 
@@ -54,7 +54,7 @@ int8_t big_to_little32( uint32_t*, uint32_t);
 This function converts array of data in memory from a Little Endian representation
 to Big Endian.
 @param:Pointer to data, Length of data in bytes.
-@return: Converted Value on Success, Error if fails.
+@return: 1 on Success, -1 if fails.
 ********************************************************************************/
 int8_t little_to_big32( uint32_t*, uint32_t);
 

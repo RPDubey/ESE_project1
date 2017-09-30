@@ -12,7 +12,7 @@ debug.c
 #ifndef FILE_DEBUG
 #define FILE_DEBUG
 
-# include "../../src/debug.c"
+#include <stdint.h>
 
 /********************************************************************************
 @brief:Implements Debug printing
