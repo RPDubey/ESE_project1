@@ -53,9 +53,9 @@ data = (data - digit)/10;
 decimal_rep += digit*(i);
 i = i * base;
 }
-
-decimal_rep = decimal_rep * sign;
-
+decimal_rep = sign*decimal_rep;
+//decimal_rep = ~(decimal_rep);
+//decimal_rep = decimal_rep  | 0x80000000 ;
 printf("Decimal Representation %d\n", decimal_rep);
 
 uint8_t temp;
@@ -130,24 +130,28 @@ number_decimal = number_decimal | ( (*(ptr+i) | temp )<<(8*(digits-1 -i)) ) ;
 temp = 0;
 
 }
-printf("Equivalent Decimal %d\n",number_decimal );
+//printf("Equivalent Decimal %d\n",number_decimal );
+int8_t sign ;
+if(number_decimal > 0) sign = 1;
+else if(number_decimal < 0) sign = -1;
 
-uint32_t quotient = number_decimal;
+
+uint32_t quotient = number_decimal*sign ;
 uint8_t  remainder;
-uint16_t power = 1;
+uint32_t power = 1;
 int32_t number_base = 0;
 
 //converting to given base
 while(quotient){
 
 remainder = quotient%base;
-number_base += remainder * power;//printf("%d %d\n",remainder,number_base );
+number_base += remainder * power;//printf("%d %d %d\n",quotient,remainder,number_base );
 quotient = (quotient - remainder)/base;
 power = power*10;
 
 }
-printf("Equivalent base %d\n",number_base );
-return number_base;
+//printf("Equivalent base %d\n",number_base*sign );
+return number_base*sign ;
 }
 
 int8_t big_to_little32( uint32_t* data, uint32_t length){

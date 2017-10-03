@@ -133,14 +133,14 @@ int8_t test_memmove2() {
   uint8_t * ptrb;
 
   printf("test_memmove2() -OVERLAP END OF SRC BEGINNING OF DST\n");
-  set = (uint8_t*) reserve_words(MEM_SET_SIZE_W);
+  set = (uint8_t*) reserve_words(MEM_SET_SIZE_B);
 
   if (! set )
   {
     return TEST_ERROR;
   }
   ptra = &set[0];
-  ptrb = &set[8];
+  ptrb = &set[8];//correcting set[8] to set[7]
 
   /* Initialize the set to test values */
   for( i = 0; i < MEM_SET_SIZE_B; i++) {
@@ -341,6 +341,8 @@ void project1(void)
 
   for ( i = 0; i < TESTCOUNT; i++)
   {
+    if(results[i] == 1) printf("Test%d Failed\n",i);
+    if(results[i] == 0) printf("Test%d Passed\n",i);
     failed += results[i];
   }
 

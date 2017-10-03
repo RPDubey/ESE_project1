@@ -34,33 +34,21 @@ if(length <= 0) {
    printf("Source and Destination are same\n" );
    return dst;
  }
-
+ uint8_t* temp_ptr = (uint8_t*)malloc(length );
+ if (temp_ptr == NULL) {printf("Malloc Failed\n");
+ return NULL;}
 size_t i;
-size_t copy_count = 0;
- if (src  < dst) {
+
    for(i = 0; i < length; i++ ){
-
-     if( (dst+i) < (src + length) ) continue;
-     else{
-     *(dst + i) = *(src + i);
-      copy_count++; }
+    *(temp_ptr + i) = *(src + i);
    }
-printf("final %zu elements copied, initial %zu elements uncopied due to overlap\n",copy_count, length-copy_count );
-   return dst;
- }
 
-
- if (src > dst) {
    for(i = 0; i < length; i++ ){
-
-     if( (dst+i)  >= src ) break;
-     else{
-     *(dst + i) = *(src + i);
-     copy_count++; }
+    *(dst + i) = *(temp_ptr + i);
    }
- printf("Initial %zu elements copied, final %zu elements uncopied due to overlap\n",copy_count, length-copy_count );
+
+
    return dst;
- }
 
 }
 
@@ -147,6 +135,7 @@ return src;
 
 
 uint8_t* my_reverse(uint8_t* src, size_t length){
+
   if (src == NULL) {
   printf("Invalid Source Address, memreverse aborted\n");
   return src;
@@ -158,17 +147,18 @@ uint8_t* my_reverse(uint8_t* src, size_t length){
     return src;
   }
 
-size_t i;
-uint8_t* temp;
-for(i = 0; i< length; i++){
+uint8_t* temp_ptr = (uint8_t*)malloc(1);
+if (temp_ptr == NULL) {printf("Malloc Failed\n");
+return NULL;}
 
-if( (src + i)  >=  (src + length - 1 - i) ) break;
+size_t i=0;
+while( (src + i)  <  (src + length - 1 - i) ){
 
-*temp = *(src + length  -1 - i);
+*temp_ptr = *(src + length  -1 - i);
 *(src + length  -1 - i) = *(src + i);
-*(src + i) = *temp;
+*(src + i) = *temp_ptr;
+i++;
 }
-printf("Reverse Succesful\n");
 return src;
 }
 
