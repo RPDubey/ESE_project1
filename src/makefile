@@ -77,6 +77,12 @@ main.dep:main.c
 build: project1.elf
 project1.elf: $(subst .c,.o,$(SOURCES))
 	$(CC) $(LDFLAGS) $(CFLAGS) $^ -o $@
+
+########build -lib###########
+.PHONY: build-lib
+build-lib: libproject1.a
+libproject1.a: conversion.o debug.o memory.o
+	ar cr libproject1.a conversion.o debug.o memory.o
 ####### clean ###############
 .PHONY: clean
 clean:
