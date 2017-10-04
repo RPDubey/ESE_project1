@@ -10,6 +10,9 @@ conversion.h
 # include <stdio.h>
 # include <stdint.h>
 # include "conversion.h"
+# include "platform.h"
+# include "memory.h"
+
 
 #define BYTE_3 (0xFF000000)
 #define BYTE_2 (0x00FF0000)
@@ -23,70 +26,53 @@ conversion.h
 uint8_t my_itoa(int32_t data, uint8_t* ptr, uint32_t base){
 
   if(base < 2 | base >16 ){
+    #ifdef ENABLE_LOWLEVEL_FUNCTION
     printf("Invalid Base. Aborting itoa\n" );
+    #endif
     return -1;
   }
 
   if (ptr == NULL) {
+    #ifdef ENABLE_LOWLEVEL_FUNCTION
     printf("Destination poiner is Null\n");
+    #endif
     return -1;
 
   }
-uint64_t i = 1;
 uint8_t string_length = 0;
 uint8_t digit;
 int8_t sign;
-uint32_t decimal_rep = 0;
+
+if(data == 0){
+  *ptr = '0';
+  *(ptr + 1) = '\0';
+  return 2;
+}
 
 if(data > 0) sign = 1;
-else if(data < 0) sign = -1;
-data = data*sign;
+if(data < 0) sign = -1;
+
+data = data*sign;//data made positive
+*(ptr+string_length) = '\0';
+string_length++;
 
 while(data >0){
-digit = data%10;
-if(digit >= base){
-  printf("Incompatible Base and data. Aborting itoa\n");
-  return 0;
-}
 
-data = (data - digit)/10;
-decimal_rep += digit*(i);
-i = i * base;
-}
-decimal_rep = sign*decimal_rep;
-//decimal_rep = ~(decimal_rep);
-//decimal_rep = decimal_rep  | 0x80000000 ;
-printf("Decimal Representation %d\n", decimal_rep);
+digit = data%base;
+data = (data - digit)/base;//for next iteration
 
-uint8_t temp;
+if(digit > 9) digit = (digit -10) + 'A'; // assign ascii value betwee A to F
 
-temp = (BYTE_3 & decimal_rep)>>SHIFT_3BYTE;
-if( temp != 0){
-*(ptr + string_length) = temp;
+else digit = digit + '0'; //assign ascii value of the digit
+*(ptr + string_length) = digit;
 string_length++;
 }
 
-temp = (BYTE_2 & decimal_rep)>>SHIFT_2BYTE;
-if( temp != 0){
-*(ptr + string_length)= temp;
-string_length++;
+if( (sign == -1) ){
+  *(ptr + string_length) = '-';
+  string_length++;
 }
-
-
-temp = (BYTE_1 & decimal_rep)>>SHIFT_1BYTE;
-if( temp != 0){
-*(ptr + string_length)= temp;
-string_length++;
-}
-
-temp = (BYTE_0 & decimal_rep);
-if( temp != 0){
-*(ptr + string_length)= temp;
-string_length++;
-}
-
-*(ptr+string_length) = 0;
-string_length++;
+my_reverse(ptr,string_length);
 
 return string_length;
 
@@ -95,69 +81,64 @@ return string_length;
 int32_t my_atoi( uint8_t* ptr, uint8_t digits , uint32_t base){
 
   if(base < 2 | base >16 ){
+      #ifdef ENABLE_LOWLEVEL_FUNCTION
     printf("Invalid Base. Aborting atoi\n");
+    #endif
     return -1;
   }
 
   if (ptr == NULL) {
+      #ifdef ENABLE_LOWLEVEL_FUNCTION
     printf("Source poiner is Null.Aborting atoi\n" );
+    #endif
     return -1;
 
   }
 if (digits <= 0) {
+    #ifdef ENABLE_LOWLEVEL_FUNCTION
   printf("Invalid digits. Aborting atoi\n");
+  #endif
   return -1;
 }
 
-int32_t number_decimal = 0;
-int32_t temp = 0;
-uint8_t i ;
+int8_t sign = 1;
 
-//check for null termination of character set
-if (*(ptr + digits - 1) == 0) {
-  digits = digits - 1;
+if( *ptr == '-' ){
+  sign = -1;
+  ptr++;//point to the first digit rather than negative sign
+  digits--;
 }
-//check for overflow , ie more than 4 bytes
-if(digits > 4) {
-digits = 4;
-printf("Character set can't fit in 32 bit int.Converting first 4 bytes\n");}
 
+my_reverse(ptr , digits);
+ptr++;//skip the NULL
+digits--;//null skipped
+
+int32_t number_decimal = 0;
+uint32_t power = 1;
+uint8_t i ;
 
 for(i = 0; i < digits; i++ ){
 
-number_decimal = number_decimal | ( (*(ptr+i) | temp )<<(8*(digits-1 -i)) ) ;
-
-temp = 0;
-
+if( (*(ptr + i)  <= '9')  && (*(ptr + i) >= '0') ) { *(ptr+i)-= '0'; }
+else if( (*(ptr + i)  <= 'F')  && (*(ptr + i) >= 'A' ) )  {*(ptr+i)-= 'A'; }
+else {
+  #ifdef ENABLE_LOWLEVEL_FUNCTION
+  printf("Invalid ascii values. Aborting\n");
+  #endif
+  return -1;
 }
-//printf("Equivalent Decimal %d\n",number_decimal );
-int8_t sign ;
-if(number_decimal > 0) sign = 1;
-else if(number_decimal < 0) sign = -1;
-
-
-uint32_t quotient = number_decimal*sign ;
-uint8_t  remainder;
-uint32_t power = 1;
-int32_t number_base = 0;
-
-//converting to given base
-while(quotient){
-
-remainder = quotient%base;
-number_base += remainder * power;//printf("%d %d %d\n",quotient,remainder,number_base );
-quotient = (quotient - remainder)/base;
-power = power*10;
-
+number_decimal += *(ptr + i) * power ;
+power = power * base ;
 }
-//printf("Equivalent base %d\n",number_base*sign );
-return number_base*sign ;
+return number_decimal*sign ;
 }
 
 int8_t big_to_little32( uint32_t* data, uint32_t length){
 
 if(data == NULL | length <= 0){
+  #ifdef ENABLE_LOWLEVEL_FUNCTION
   printf("Invalid Arguments\n");
+  #endif
   return -1;
 }
 uint32_t i, temp1, temp2, temp3, temp4 = 0;
@@ -175,7 +156,9 @@ return 1;
 int8_t little_to_big32( uint32_t* data, uint32_t length){
 
   if(data == NULL | length <= 0){
+    #ifdef ENABLE_LOWLEVEL_FUNCTION
     printf("Invalid Arguments\n");
+    #endif
     return -1;
   }
   uint32_t i, temp1, temp2, temp3, temp4 = 0;

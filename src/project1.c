@@ -32,8 +32,10 @@ int8_t test_data1() {
   int32_t num = -4096;
   uint32_t digits;
   int32_t value;
-
+#ifdef ENABLE_LOWLEVEL_FUNCTION
   printf("\ntest_data1();\n");
+#endif
+
   ptr = (uint8_t*) reserve_words( DATA_SET_SIZE_W );
 
   if (! ptr )
@@ -44,8 +46,12 @@ int8_t test_data1() {
   digits = my_itoa( num, ptr, BASE_16);
   value = my_atoi( ptr, digits, BASE_16);
   #ifdef VERBOSE
+  #ifdef ENABLE_LOWLEVEL_FUNCTION
   printf("  Initial number: %d\n", num);
   printf("  Final Decimal number: %d\n", value);
+  #endif
+
+
   #endif
   free_words( (uint32_t*)ptr );
 
@@ -61,8 +67,11 @@ int8_t test_data2() {
   int32_t num = 123456;
   uint32_t digits;
   int32_t value;
-
+  #ifdef ENABLE_LOWLEVEL_FUNCTION
   printf("test_data2();\n");
+  #endif
+
+
   ptr = (uint8_t*) reserve_words( DATA_SET_SIZE_W );
 
   if (! ptr )
@@ -73,8 +82,12 @@ int8_t test_data2() {
   digits = my_itoa( num, ptr, BASE_10);
   value = my_atoi( ptr, digits, BASE_10);
   #ifdef VERBOSE
+  #ifdef ENABLE_LOWLEVEL_FUNCTION
   printf("  Initial Decimal number: %d\n", num);
   printf("  Final Decimal number: %d\n", value);
+  #endif
+
+
   #endif
   free_words( (uint32_t*)ptr );
 
@@ -91,8 +104,11 @@ int8_t test_memmove1() {
   uint8_t * set;
   uint8_t * ptra;
   uint8_t * ptrb;
-
+  #ifdef ENABLE_LOWLEVEL_FUNCTION
   printf("test_memmove1() - NO OVERLAP\n");
+  #endif
+
+
   set = (uint8_t*) reserve_words( MEM_SET_SIZE_W );
 
   if (! set )
@@ -131,8 +147,11 @@ int8_t test_memmove2() {
   uint8_t * set;
   uint8_t * ptra;
   uint8_t * ptrb;
-
+  #ifdef ENABLE_LOWLEVEL_FUNCTION
   printf("test_memmove2() -OVERLAP END OF SRC BEGINNING OF DST\n");
+  #endif
+
+
   set = (uint8_t*) reserve_words(MEM_SET_SIZE_B);
 
   if (! set )
@@ -169,8 +188,11 @@ int8_t test_memmove3() {
   uint8_t * set;
   uint8_t * ptra;
   uint8_t * ptrb;
+  #ifdef ENABLE_LOWLEVEL_FUNCTION
+printf("test_memove3() - OVERLAP END OF DEST BEGINNING OF SRC\n");
+  #endif
 
-  printf("test_memove3() - OVERLAP END OF DEST BEGINNING OF SRC\n");
+
   set = (uint8_t*)reserve_words( MEM_SET_SIZE_W);
 
   if (! set )
@@ -210,8 +232,11 @@ int8_t test_memcpy() {
   uint8_t * set;
   uint8_t * ptra;
   uint8_t * ptrb;
+  #ifdef ENABLE_LOWLEVEL_FUNCTION
+printf("test_memcpy()\n");
+  #endif
 
-  printf("test_memcpy()\n");
+
   set = (uint8_t*) reserve_words(MEM_SET_SIZE_W);
 
   if (! set )
@@ -249,8 +274,11 @@ int8_t test_memset()
   uint8_t * set;
   uint8_t * ptra;
   uint8_t * ptrb;
-
+  #ifdef ENABLE_LOWLEVEL_FUNCTION
   printf("test_memset()\n");
+  #endif
+
+
   set = (uint8_t*)reserve_words(MEM_SET_SIZE_W);
   if (! set )
   {
@@ -299,7 +327,11 @@ int8_t test_reverse()
                                  0x20, 0x24, 0x7C, 0x20, 0x24, 0x69, 0x68, 0x54
                                };
 
+#ifdef ENABLE_LOWLEVEL_FUNCTION
   printf("test_reverse()\n");
+#endif
+
+
   copy = (uint8_t*)reserve_words(MEM_SET_SIZE_W);
   if (! copy )
   {
@@ -341,14 +373,21 @@ void project1(void)
 
   for ( i = 0; i < TESTCOUNT; i++)
   {
+    #ifdef ENABLE_LOWLEVEL_FUNCTION
     if(results[i] == 1) printf("Test%d Failed\n",i);
     if(results[i] == 0) printf("Test%d Passed\n",i);
+    #endif
+
+
     failed += results[i];
   }
-
+  #ifdef ENABLE_LOWLEVEL_FUNCTION
   printf("--------------------------------\n");
   printf("Test Results:\n");
   printf("  PASSED: %d / %d\n", (TESTCOUNT - failed), TESTCOUNT);
   printf("  FAILED: %d / %d\n", failed, TESTCOUNT);
   printf("--------------------------------\n");
+  #endif
+
+
 }

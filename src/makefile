@@ -1,40 +1,83 @@
-INCLUDES := -I../include/common/
-CFLAGS := -Wall
-CPPFLAGS :=  -DPROJECT1
-LDFLAGS = -Xlinker -MAP=>project1.map
 
 ifeq ($(PLATFORM), HOST)
 	CC = gcc
+	CPPFLAGS =  -DPROJECT1 -DVERBOSE #-DKL254Z
+	CFLAGS = -Wall -g -o0 -std=c99 -Werror
+	LDFLAGS = -Xlinker -MAP=>project1.map
 	SOURCES = ./memory.c ./main.c ./conversion.c ./debug.c ./project1.c
+  INCLUDES = -I../include/common/
 else ifeq ($(PLATFORM) , BBB)
 	CC = arm-linux-gnueabi-gcc
+	CPPFLAGS =  -DPROJECT1 #-DVERBOSE
+	CFLAGS = -Wall -g -o0 -std=c99 -Werror
+	LDFLAGS = -Xlinker -MAP=>project1.map
 	SOURCES = ./memory.c ./main.c ./conversion.c ./debug.c ./project1.c
-else ifeq ($(PLATFORM) , KL25Z)
+  INCLUDES = -I../include/common/
+else ifeq ($(PLATFORM) , KL254Z)
 	CC = arm-none-eabi-gcc
-	SOURCES =
+	CPPFLAGS = -DKL25Z4 -DPROJECT1 #-DVERBOSE
+	CFLAGS = -Wall -g -o0 -std=c99 -Werror\
+          	-mcpu='cortex-m0plus' -mthumb -march=armv6-m\
+           	-mfloat-abi='soft' -mfpu=fpv4-sp-d16 --specs=nosys.specs
+	LDFLAGS = -Xlinker -MAP=>project1.map\
+	          -L../platform -T MKL25Z128xxx4_flash.ld
+
+	SOURCES = ./memory.c ./main.c ./conversion.c ./debug.c ./project1.c\
+						./startup_MKL25Z4.S ./system_MKL25Z4.c
+  INCLUDES = -I../include/common/ \
+	           -I../include/CMSIS/ \
+						 -I../include/kl25z/
 endif
 
+####### *.I Files ########
+%.i: %.c
+	$(CC) -E -o $@ $^ $(CPPFLAGS) $(INCLUDES)
+####### *.asm Files ########
+%.asm: %.c
+	$(CC) -S -o $@ $^ $(CPPFLAGS) $(INCLUDES)
+####### *.o Files #######
+%.o: %.c
+	$(CC) -c -o $@ $^ $(CPPFLAGS) $(INCLUDES)
+###### compile-all #############
+.PHONY: compile-all
+compile-all: memory.o
 memory.o: memory.c
-	$(CC) -c -o $@ $^
-
+	$(CC) -c -o $@ $^ $(CPPFLAGS) $(INCLUDES)
+compile-all:conversion.o
 conversion.o: conversion.c
-	$(CC) -c -o $@ $^ $(INCLUDES)
-
+	$(CC) -c -o $@ $^ $(CPPFLAGS) $(INCLUDES)
+compile-all:debug.o
 debug.o: debug.c
 	$(CC) -c -o $@ $^ $(CPPFLAGS) $(INCLUDES)
-
-project1.o: project1.c memory.o debug.o
+compile-all:project1.o
+project1.o: project1.c
 	$(CC) -c -o $@ $^ $(CPPFLAGS) $(INCLUDES)
-
+compile-all:main.o
 main.o:main.c
 	$(CC) -c -o $@ $^ $(CPPFLAGS) $(INCLUDES)
-
-.PHONY: all
-all: project1.elf
+####### build ###############
+.PHONY: build
+##dependency files##
+build: memory.dep
+memory.dep: memory.c
+	$(CC) -M -o $@ $^ $(CPPFLAGS) $(INCLUDES)
+build:conversion.dep
+conversion.dep: conversion.c
+	$(CC) -M -o $@ $^ $(CPPFLAGS) $(INCLUDES)
+build:debug.dep
+debug.dep: debug.c
+	$(CC) -M -o $@ $^ $(CPPFLAGS) $(INCLUDES)
+build:project1.dep
+project1.dep: project1.c
+	$(CC) -M -o $@ $^ $(CPPFLAGS) $(INCLUDES)
+build:main.dep
+main.dep:main.c
+	$(CC) -M -o $@ $^ $(CPPFLAGS) $(INCLUDES)
+##executable##
+build: project1.elf
 project1.elf: $(subst .c,.o,$(SOURCES))
-	$(CC) $(LDFLAGS) -o $@ $^ $(CFLAGS)
-
-
+	$(CC) $(LDFLAGS) $(CFLAGS) $^ -o $@
+####### clean ###############
 .PHONY: clean
 clean:
-	rm *.o project1.elf
+	rm *.o *.i *.asm *.map project1.elf 0 *.dep
