@@ -77,7 +77,9 @@ main.dep:main.c
 build: project1.elf
 project1.elf: $(subst .c,.o,$(SOURCES))
 	$(CC) $(LDFLAGS) $(CFLAGS) $^ -o $@
-
+build:size_report
+size_report:
+	size *.o project1.elf
 ########build -lib###########
 .PHONY: build-lib
 build-lib: libproject1.a
