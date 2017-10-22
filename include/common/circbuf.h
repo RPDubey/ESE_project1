@@ -17,18 +17,20 @@ circbuf.c
 #define unsigned_byte uint8_t
 
 typedef struct{
-  void* buf_ptr;  //points to begining of buffer in memory
-  void* head;     // where to add item
-  void* tail;     //where to pop item
+  unsigned_byte* buf_ptr;  //points to begining of buffer in memory
+  unsigned_byte* head;     // where to add item
+  unsigned_byte* tail;     //where to pop item
   size_t size;    //buffer size
   size_t count;   //current number of items on the buffer
+  unsigned_byte* buf_top_ptr; //points to the end of buffer in memory
 }CB_t;
 
 typedef enum{
-  Buffer Full,
-  Buffer Empty,
-  Success,
-  Null Error
+  Success ,
+  Buffer_Full,
+  Buffer_Empty,
+  Null_Error,
+  Argument_Error
 }CB_enum;
 
 
@@ -44,7 +46,7 @@ CB_enum CB_buffer_add_item( CB_t* , unsigned_byte* );
 
 /*******************************************************************************
 @brief:Implements removing items from circular buffer
-This function pointer to the circular buffer from which the data has to be
+This function gives pointer to the circular buffer from which the data has to be
 removed and the variable in which the removed data has to be stored.
 @param:Pointer to CB, pointer to the variable where popped data has to be saved
 @return:CB_enum enumaration that specifies success failure etc.
@@ -74,7 +76,7 @@ CB_enum CB_is_empty(CB_t*);
 /*******************************************************************************
 @brief:Implements seeking data in circular buffer at particular location
 This function takes pointer to a circular buffer, and position from head to peek
-into and pointer where the data at that location has to be stored.
+into and  pointer where this data will be stored.
 @param:Pointer to CB,position from head to seek into, pointer to adress where
 the data has to be stored.
 @return:CB_enum enumaration that specifies success failure etc.
@@ -90,7 +92,7 @@ in Bytes.
 @param:Pointer to CB, size of buffer in bytes.
 @return:CB_enum enumaration that specifies success failure etc.
 *******************************************************************************/
-CB_enum CB_init(CB_t*,size_t );
+CB_enum CB_init(CB_t* CB_ptr , size_t CB_size);
 
 
 
@@ -100,7 +102,7 @@ This function takes pointer to the circular buffer to be destroyed
 @param:Pointer to CB
 @return:CB_enum enumaration that specifies success failure etc.
 *******************************************************************************/
-CB_enum CB_destroy(CB_t*)
+CB_enum CB_destroy(CB_t* CB_ptr);
 
 
 #endif
