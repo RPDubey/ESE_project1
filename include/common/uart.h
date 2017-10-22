@@ -8,17 +8,16 @@ uart.c
 @date:10/22/2017
 *******************************************************************************/
 
-#include <stdint.h>
 #include "circbuf.h"
-
+#include <stdlib.h>
 #ifndef FILE_UART
 #define FILE_UART
 
-//enum for return type of UART functions.
+//enum for return type of uart functions
 typedef enum{
-success
-}UART_enum_t;
-
+  Pass,
+  Fail
+}UART_enum;
 
 /*************************************************************************
 @brief:Configures UART to given settings
@@ -26,24 +25,20 @@ success
 This function configures UART to given settings, using predefined bitmasks
 and macros
 @param:none
-@return:UART_enum_t
+@return:UART_enum
 *************************************************************************/
-UART_enum_t UART_configure()
-
-
+UART_enum UART_configure();
 
 /*************************************************************************
-@brief: This​ ​ function​ ​ will​ ​ send​ ​ a ​ ​ single​ ​ byte​ ​ down​ ​ a ​ ​ specific​ ​ UART​ ​ device
+@brief:This​ function will send​ a​ single​ byte down​ a​ specific​​ UART device
 
-This​ ​ function​ ​ will​ ​ send​ ​ a ​ ​ single​ ​ byte​ ​ down​ ​ a ​ ​ specific​ ​ UART​ ​ device.It takes
+This​ function​ will​ send​ a ​single​ byte​ down​ a​ specific UART​ device.It takes
 pointer to data item to send.It blocks on already transmitting data.
 
 @param:pointer to data item to send
-@return:UART_enum_t
+@return:UART_enum
 *************************************************************************/
-UART_enum_t​ UART_send(unsigned_byte* );
-
-
+UART_enum UART_send(unsigned_byte*);
 
 /*************************************************************************
 @brief: This​ ​ function​ ​ will​ ​ send​s n​ bytes​ ​ down​ ​ a ​ ​ specific​ ​ UART​ ​ device
@@ -51,11 +46,9 @@ UART_enum_t​ UART_send(unsigned_byte* );
 This​ ​function​ ​will​ send n bytes​ down​​ a specific​ UART​ device. It takes pointer to data
 item to send & no. of items to send .It blocks on already transmitting data.
 @param:pointer to data item to send, no. of bytes to send
-@return: UART_enum_t
-*************************************************************************/
-UART_enum_t​ UART_send_n( ​unsigned_byte* , size_t​​ );
-
-
+@return: UART_enum
+************************************************************************/
+UART_enum UART_send_n(unsigned_byte*,size_t);
 
 /*************************************************************************
 @brief: This​ ​ function​ ​ returns a byte rxd from​ a​ specific​ ​ UART​ ​ device
@@ -63,11 +56,9 @@ UART_enum_t​ UART_send_n( ​unsigned_byte* , size_t​​ );
 This​ ​ function​ ​ should​ ​ return​ ​ a ​ ​ received​ ​ byte​ ​ on​ ​ the​ ​ UART​ ​ using​ ​ an​ ​ input​ ​
 parameter​ ​ pointer.Blocks until the character has been rxd.
 @param:pointer to data item to send
-@return: UART_enum_t
+@return: UART_enum
 *************************************************************************/
-UART_enum_t​ UART_receive( unsigned_byte* );
-
-
+UART_enum UART_receive(unsigned_byte*);
 
 /*************************************************************************
 @brief: This​ ​ function​ ​ returns n bytes rxd from​ a​ specific​ ​ UART​ ​ device
@@ -75,22 +66,21 @@ UART_enum_t​ UART_receive( unsigned_byte* );
 This​ ​ function​ ​ should​ ​ return​ ​ received​ ​ byte​s ​ on​ ​ the​ ​ UART​ ​ using​ ​ an​ ​ input​ ​
 parameter​ ​ pointer.Blocks until the characters have been rxd.
 @param:pointer to data item to send, no. of bytes
-@return: UART_enum_t
+@return: UART_enum
 *************************************************************************/
-UART_enum_t​ UART_receive_n( ​unsigned_byte* , size_t​ );
-
+UART_enum UART_receive_n(unsigned_byte*,size_t);
 
 
 /*************************************************************************
 @brief: This​ ​ function​ ​ is the IRQ handler for the UART
 
-This​ ​ function​ ​ is​ ​ the​ ​ IRQ​ ​ handler​ ​ for​ ​ the​ ​ UART. We​​ handle​ ​ two​ ​ types​ ​ of
-interrupts​ ​ in​ ​ this​ ​ function - Receive​ ​ Interrupts & Transmit​ ​ interrupt.
-Each​ ​interrupt​ ​clears their​ associated flag​ when​ completed​ but​ only if​ ​ they​ ​ were​ ​ set
+This​ ​ function​ ​ is​ ​ the​ ​ IRQ​ ​ handler​ ​ for​ ​ the​ ​ UART. We​​ handle​ ​ two​ ​ types​ ​
+of interrupts​ ​ in​ ​ this​ ​ function - Receive​ ​ Interrupts & Transmit​ ​ interrupt.
+Each​ ​interrupt​ ​clears their​ associated flag​ when​ completed​ but​ only if​ ​ they​ ​
+were​ ​ set
 @param: none
 @return: void
 *************************************************************************/
-void​ UART0_IRQHandler();
-
+void UART0_IRQHandler();
 
 #endif
