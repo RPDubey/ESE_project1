@@ -1,21 +1,29 @@
+CC = gcc
+CPPFLAGS =  -DPROJECT2# -DVERBOSE #-DKL254Z
+CFLAGS = -Wall -g -o0 -std=c99 -Werror
+LDFLAGS = -Xlinker -MAP=>project1.map
+SOURCES = ./memory.c ./main.c ./conversion.c ./debug.c ./project1.c
+INCLUDES = -I../include/common/
 
 ifeq ($(PLATFORM), HOST)
 	CC = gcc
-	CPPFLAGS =  -DPROJECT1 -DVERBOSE #-DKL254Z
+	CPPFLAGS =  -DPROJECT2# -DVERBOSE #-DKL254Z
 	CFLAGS = -Wall -g -o0 -std=c99 -Werror
 	LDFLAGS = -Xlinker -MAP=>project1.map
-	SOURCES = ./memory.c ./main.c ./conversion.c ./debug.c ./project1.c
+	SOURCES = ./memory.c ./main.c ./conversion.c ./debug.c ./project1.c \
+	 					./circbuf.c
   INCLUDES = -I../include/common/
 else ifeq ($(PLATFORM) , BBB)
-	CC = arm-linux-gnueabi-gcc
-	CPPFLAGS =  -DPROJECT1 #-DVERBOSE
+	CC = arm-linux-gnueabihf-gcc
+	CPPFLAGS =  -DPROJECT2 #-DVERBOSE
 	CFLAGS = -Wall -g -o0 -std=c99 -Werror
 	LDFLAGS = -Xlinker -MAP=>project1.map
-	SOURCES = ./memory.c ./main.c ./conversion.c ./debug.c ./project1.c
+	SOURCES = ./memory.c ./main.c ./conversion.c ./debug.c ./project1.c \
+						./circbuf.c
   INCLUDES = -I../include/common/
 else ifeq ($(PLATFORM) , KL254Z)
 	CC = arm-none-eabi-gcc
-	CPPFLAGS = -DKL25Z4 -DPROJECT1 #-DVERBOSE
+	CPPFLAGS = -DKL25Z4 -DPROJECT2 #-DVERBOSE
 	CFLAGS = -Wall -g -o0 -std=c99 -Werror\
           	-mcpu='cortex-m0plus' -mthumb -march=armv6-m\
            	-mfloat-abi='soft' -mfpu=fpv4-sp-d16 --specs=nosys.specs
@@ -23,6 +31,7 @@ else ifeq ($(PLATFORM) , KL254Z)
 	          -L../platform -T MKL25Z128xxx4_flash.ld
 
 	SOURCES = ./memory.c ./main.c ./conversion.c ./debug.c ./project1.c\
+						./circbuf.c ./uart.c\
 						./startup_MKL25Z4.S ./system_MKL25Z4.c
   INCLUDES = -I../include/common/ \
 	           -I../include/CMSIS/ \
