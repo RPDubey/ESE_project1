@@ -1,0 +1,1574 @@
+
+/*******************************************************************************
+@file:circbuf.c
+@brief:function declarations for implementing circular buffer operations
+
+This file provides definitions for CB related functions declared declared in
+circbuf.h
+@author:Ravi Dubey
+@date:10/21/2017
+*******************************************************************************/
+
+# include <stdlib.h>
+# include "circbuf.h"
+# include <stdio.h>
+CB_enum CB_init(CB_t* CB_ptr, size_t CB_size ){
+
+  if(CB_ptr == NULL || CB_size == 0) return (CB_enum)Argument_Error;
+
+  CB_enum return_val;
+  CB_ptr->buf_ptr =(unsigned_byte*)malloc(CB_size);
+  return_val = (CB_ptr->buf_ptr == NULL)? Null_Error:Success ;
+  if(return_val != Success) return return_val;
+  CB_ptr->size = CB_size;
+  CB_ptr->head = CB_ptr->buf_ptr ;
+  CB_ptr->tail = CB_ptr->buf_ptr ;
+  CB_ptr->count = 0;
+  CB_ptr->buf_top_ptr = (CB_ptr->buf_ptr + CB_size * sizeof(unsigned_byte) - 1);
+  return return_val;
+
+}
+
+
+
+CB_enum CB_destroy(CB_t* CB_ptr){
+
+  if(CB_ptr == NULL ) return (CB_enum)Argument_Error;
+  free(CB_ptr->buf_ptr); // free CB storage
+  free(CB_ptr);          // free CB structure
+  return (CB_enum)Success ;
+}
+
+
+CB_enum CB_buffer_add_item( CB_t* CB_ptr , unsigned_byte data ){
+
+  if(CB_ptr == NULL ) return (CB_enum)Argument_Error;
+ //if que not full, then move head to position where data has to be stored
+ //and write it there
+
+
+  if(CB_ptr->count < CB_ptr->size ){
+
+    if(CB_ptr->head ==   CB_ptr->buf_top_ptr ){
+      CB_ptr->head = CB_ptr->buf_ptr;
+
+    }
+    else CB_ptr->head ++ ;
+
+    *(CB_ptr->head) = data;
+    CB_ptr->count++;
+
+    return (CB_enum)Success ;
+  }
+  else return (CB_enum)Buffer_Full ;
+}
+
+
+
+CB_enum CB_buffer_remove_item(CB_t* CB_ptr , unsigned_byte* data ){
+  if(CB_ptr == NULL || data == NULL) return (CB_enum)Argument_Error;
+ //If the buffer is not empty,then move tail to the next location and
+ //read the data out at the new location.
+  if(CB_ptr->count > 0 ){
+    if(CB_ptr->tail ==   CB_ptr->buf_top_ptr ){
+      CB_ptr->tail = CB_ptr->buf_ptr;
+    }
+    else CB_ptr->tail ++;
+  *data = *CB_ptr->tail;
+  CB_ptr->count-- ;
+
+  return (CB_enum)Success ;
+  }
+  else return (CB_enum)Buffer_Empty ;
+
+}
+
+
+CB_enum CB_is_full(CB_t* CB_ptr){
+  if(CB_ptr == NULL ) return (CB_enum)Argument_Error;
+  if(CB_ptr->count >= CB_ptr->size ) return (CB_enum)Buffer_Full;
+
+}
+
+
+CB_enum CB_is_empty(CB_t* CB_ptr){
+  if(CB_ptr == NULL ) return (CB_enum)Argument_Error;
+  if(CB_ptr->count == 0 ) return (CB_enum)Buffer_Empty;
+};
+
+
+CB_enum CB_peek(CB_t* CB_ptr ,size_t loc, unsigned_byte* data ){
+  if(CB_ptr == NULL || data == NULL) return (CB_enum)Argument_Error;
+  unsigned_byte* temp_head = CB_ptr->head;
+  while(loc != 0){
+    if( temp_head ==  CB_ptr->buf_top_ptr ){
+      temp_head = CB_ptr->buf_ptr;
+    }
+    else temp_head ++ ;
+   loc--;
+  }
+*data = *temp_head;
+return (CB_enum)Success;
+}
+
+void print_CB_enum(CB_enum return_val){
+
+  switch (return_val) {
+    case 0: printf("Success\n" );break;
+    case 1: printf("Buffer_Full\n" );break;
+    case 2: printf("Buffer_Empty\n" );break;
+    case 3: printf("Null_Error\n" );break;
+    case 4: printf("Argument_Error\n" );break;
+  }
+}
+/********************************************************************************
+@file:conversion.c
+@brief:function declarations for conversion operation functions
+
+This file declares functions for implementing conversion operations defined in
+conversion.h
+@author:Ravi Dubey
+@date:09/23/2017
+********************************************************************************/
+# include <stdio.h>
+# include <stdint.h>
+# include "conversion.h"
+# include "platform.h"
+# include "memory.h"
+
+
+#define BYTE_3 (0xFF000000)
+#define BYTE_2 (0x00FF0000)
+#define BYTE_1 (0x0000FF00)
+#define BYTE_0 (0x000000FF)
+
+#define SHIFT_1BYTE (8)
+#define SHIFT_2BYTE (16)
+#define SHIFT_3BYTE (24)
+
+uint8_t my_itoa(int32_t data, uint8_t* ptr, uint32_t base){
+
+  if(base < 2 | base >16 ){
+    #ifdef ENABLE_LOWLEVEL_FUNCTION
+    printf("Invalid Base. Aborting itoa\n" );
+    #endif
+    return -1;
+  }
+
+  if (ptr == NULL) {
+    #ifdef ENABLE_LOWLEVEL_FUNCTION
+    printf("Destination poiner is Null\n");
+    #endif
+    return -1;
+
+  }
+uint8_t string_length = 0;
+uint8_t digit;
+int8_t sign;
+
+if(data == 0){
+  *ptr = '0';
+  *(ptr + 1) = '\0';
+  return 2;
+}
+
+if(data > 0) sign = 1;
+if(data < 0) sign = -1;
+
+data = data*sign;//data made positive
+*(ptr+string_length) = '\0';
+string_length++;
+
+while(data >0){
+
+digit = data%base;
+data = (data - digit)/base;//for next iteration
+
+if(digit > 9) digit = (digit -10) + 'A'; // assign ascii value betwee A to F
+
+else digit = digit + '0'; //assign ascii value of the digit
+*(ptr + string_length) = digit;
+string_length++;
+}
+
+if( (sign == -1) ){
+  *(ptr + string_length) = '-';
+  string_length++;
+}
+my_reverse(ptr,string_length);
+
+return string_length;
+
+}
+
+int32_t my_atoi( uint8_t* ptr, uint8_t digits , uint32_t base){
+
+  if(base < 2 | base >16 ){
+      #ifdef ENABLE_LOWLEVEL_FUNCTION
+    printf("Invalid Base. Aborting atoi\n");
+    #endif
+    return -1;
+  }
+
+  if (ptr == NULL) {
+      #ifdef ENABLE_LOWLEVEL_FUNCTION
+    printf("Source poiner is Null.Aborting atoi\n" );
+    #endif
+    return -1;
+
+  }
+if (digits <= 0) {
+    #ifdef ENABLE_LOWLEVEL_FUNCTION
+  printf("Invalid digits. Aborting atoi\n");
+  #endif
+  return -1;
+}
+
+int8_t sign = 1;
+
+if( *ptr == '-' ){
+  sign = -1;
+  ptr++;//point to the first digit rather than negative sign
+  digits--;
+}
+
+my_reverse(ptr , digits);
+ptr++;//skip the NULL
+digits--;//null skipped
+
+int32_t number_decimal = 0;
+uint32_t power = 1;
+uint8_t i ;
+
+for(i = 0; i < digits; i++ ){
+
+if( (*(ptr + i)  <= '9')  && (*(ptr + i) >= '0') ) { *(ptr+i)-= '0'; }
+else if( (*(ptr + i)  <= 'F')  && (*(ptr + i) >= 'A' ) )  {*(ptr+i)-= 'A'; }
+else {
+  #ifdef ENABLE_LOWLEVEL_FUNCTION
+  printf("Invalid ascii values. Aborting\n");
+  #endif
+  return -1;
+}
+number_decimal += *(ptr + i) * power ;
+power = power * base ;
+}
+return number_decimal*sign ;
+}
+
+int8_t big_to_little32( uint32_t* data, uint32_t length){
+
+if(data == NULL | length <= 0){
+  #ifdef ENABLE_LOWLEVEL_FUNCTION
+  printf("Invalid Arguments\n");
+  #endif
+  return -1;
+}
+uint32_t i, temp1, temp2, temp3, temp4 = 0;
+
+for(i = 0;i < length;i++){
+temp1 = *(data + i) & BYTE_3>>SHIFT_3BYTE  ;
+temp2 = *(data + i) & BYTE_2>>SHIFT_1BYTE  ;
+temp3 = *(data + i) & BYTE_1<<SHIFT_1BYTE  ;
+temp4 = *(data + i) & BYTE_0<<SHIFT_3BYTE  ;
+*(data + i) = temp4 | temp3 | temp2 | temp1 ;
+}
+return 1;
+}
+
+int8_t little_to_big32( uint32_t* data, uint32_t length){
+
+  if(data == NULL | length <= 0){
+    #ifdef ENABLE_LOWLEVEL_FUNCTION
+    printf("Invalid Arguments\n");
+    #endif
+    return -1;
+  }
+  uint32_t i, temp1, temp2, temp3, temp4 = 0;
+
+  for(i = 0;i < length;i++){
+  temp1 = *(data + i) & BYTE_3>>SHIFT_3BYTE  ;
+  temp2 = *(data + i) & BYTE_2>>SHIFT_1BYTE  ;
+  temp3 = *(data + i) & BYTE_1<<SHIFT_1BYTE  ;
+  temp4 = *(data + i) & BYTE_0<<SHIFT_3BYTE  ;
+  *(data + i) = temp4 | temp3 | temp2 | temp1 ;
+  }
+  return 1;
+
+}
+/********************************************************************************
+@file:conversion.c
+@brief:function declarations for debug function
+
+This file declares function for printing data to  debug as defined in debug.h
+@author:Ravi Dubey
+@date:09/23/2017
+********************************************************************************/
+# include <stdio.h>
+# include <stdint.h>
+# include "debug.h"
+# include "platform.h"
+
+void print_memory(uint8_t* start, uint32_t length){
+
+#ifdef VERBOSE
+if(start == NULL) {
+    #ifdef ENABLE_LOWLEVEL_FUNCTION
+  printf("Start pointer is NULL. print_memory failed\n");
+  #endif
+}
+else if(length <= 0 ){
+  #ifdef ENABLE_LOWLEVEL_FUNCTION
+   printf("Invalid Length\n" );
+   #endif
+}
+else{
+uint32_t i;
+#ifdef ENABLE_LOWLEVEL_FUNCTION
+for ( i = 0; i < length; i++) {
+ printf("0x%x\n", *(start + i) );
+}
+#endif
+}
+#endif
+
+}
+//#include <stdio.h>
+#include <stdlib.h>
+
+#include "memory.h"
+#include "project1.h"
+#include "conversion.h"
+#include "debug.h"
+#include "platform.h"
+#include "circbuf.h"
+#include "uart.h"
+
+
+#define UART
+
+#ifdef ENABLE_LOWLEVEL_FUNCTION
+#undef ENABLE_LOWLEVEL_FUNCTION
+#endif
+
+int main(void){
+
+#ifdef ENABLE_LOWLEVEL_FUNCTION
+printf("Main Starts\n" );
+#endif
+
+#ifdef PROJECT1
+project1();
+#endif
+
+#ifdef PROJECT3
+
+CB_enum return_val;
+CB_t* CB_ptr = (CB_t*)malloc(sizeof(CB_t));
+if(CB_ptr == NULL) {
+printf("malloc for buffer structure failed\n" );
+return 0;
+}
+
+
+return_val = CB_init(CB_ptr, 4);
+if(return_val != 0) {
+print_CB_enum(return_val);
+return 0;}
+
+
+return_val = CB_buffer_add_item(CB_ptr,0) ;
+if(return_val != 0) {
+  print_CB_enum(return_val);
+  return 0;}
+
+return_val = CB_buffer_add_item(CB_ptr,1) ;
+if(return_val != 0) {
+  print_CB_enum(return_val);
+  return 0;}
+
+return_val = CB_buffer_add_item(CB_ptr,2) ;
+if(return_val != 0) {
+  print_CB_enum(return_val);
+  return 0;}
+
+return_val = CB_buffer_add_item(CB_ptr,3) ;
+if(return_val != 0) {
+  print_CB_enum(return_val);
+  return 0;}
+
+
+
+return_val = CB_buffer_add_item(CB_ptr,4) ;
+if(return_val != 0) {
+  print_CB_enum(return_val);}
+
+
+unsigned_byte* stored =(unsigned_byte* )malloc(1);
+
+return_val = CB_buffer_remove_item(CB_ptr,stored) ;
+if(return_val != 0) {
+  print_CB_enum(return_val);}
+printf("%d",*stored);
+
+
+return_val = CB_buffer_remove_item(CB_ptr , stored);
+if(return_val != 0) {
+  print_CB_enum(return_val);}
+printf("%d",*stored);
+
+
+return_val = CB_buffer_remove_item(CB_ptr , stored);
+if(return_val != 0) {
+  print_CB_enum(return_val);}
+printf("%d",*stored);
+
+
+  return_val = CB_buffer_add_item(CB_ptr,4) ;
+  if(return_val != 0) {
+    print_CB_enum(return_val);}
+
+  return_val = CB_buffer_add_item(CB_ptr,5) ;
+    if(return_val != 0) {
+      print_CB_enum(return_val);}
+
+
+return_val = CB_buffer_remove_item(CB_ptr , stored);
+if(return_val != 0) {
+  print_CB_enum(return_val);}
+printf("%d",*stored);
+
+
+return_val = CB_buffer_remove_item(CB_ptr , stored);
+if(return_val != 0) {
+  print_CB_enum(return_val);
+  return 0;}
+printf("%d",*stored);
+
+
+
+return_val = CB_destroy(CB_ptr);
+if(return_val != 0) {
+  print_CB_enum(return_val);
+  return 0;}
+
+#endif
+#ifdef UART
+
+uint8_t send_var = 8;
+
+UART_configure();
+UART_send(&send_var);
+
+#endif
+
+
+#ifdef ENABLE_LOWLEVEL_FUNCTION
+printf("Main ends\n" );
+#endif
+
+return 0;
+
+}
+/*******************************************************************************
+@file:memory.c
+@brief:function declaration for memory copy operation
+
+This file declares function my_memmove for copying data from one memory location
+to another
+@author:Ravi Dubey
+@date:09/23/2017
+*******************************************************************************/
+#include <stdio.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include "platform.h"
+
+uint8_t* my_memmove(uint8_t* src, uint8_t* dst, size_t length){
+
+//Null source or destination pointer
+if (src == NULL) {
+#ifdef ENABLE_LOWLEVEL_FUNCTION
+printf("Invalid Source Address, memmove aborted\n");
+#endif
+
+return dst;
+}
+
+if (dst == NULL) {
+#ifdef ENABLE_LOWLEVEL_FUNCTION
+printf("Invalid destination Address, memmove aborted\n");
+#endif
+
+
+return dst;
+}
+
+//Length =0
+if(length <= 0) {
+#ifdef ENABLE_LOWLEVEL_FUNCTION
+printf("Invalid length\n"); return dst;
+#endif
+
+
+}
+
+ if (src == dst) {
+   #ifdef ENABLE_LOWLEVEL_FUNCTION
+printf("Source and Destination are same\n" );
+   #endif
+
+
+   return dst;
+ }
+ uint8_t* temp_ptr = (uint8_t*)malloc(length );
+ if (temp_ptr      == NULL) {
+   #ifdef ENABLE_LOWLEVEL_FUNCTION
+printf("Malloc Failed\n");
+   #endif
+
+
+ return NULL;}
+size_t i;
+
+   for(i = 0; i < length; i++ ){
+    *(temp_ptr + i) = *(src + i);
+   }
+
+   for(i = 0; i < length; i++ ){
+    *(dst + i) = *(temp_ptr + i);
+   }
+
+
+   return dst;
+
+}
+
+
+uint8_t* my_memcopy(uint8_t* src, uint8_t* dst, size_t length){
+
+  //Null source or destination pointer
+  if (src == NULL) {
+    #ifdef ENABLE_LOWLEVEL_FUNCTION
+  printf("Invalid Source Address, memcopy aborted\n");
+    #endif
+
+
+  return dst;
+  }
+
+  if (dst == NULL) {
+    #ifdef ENABLE_LOWLEVEL_FUNCTION
+printf("Invalid destination Address, memcopy aborted\n");
+    #endif
+
+
+  return dst;
+  }
+
+  //Length =<0
+  if(length <= 0) {
+    #ifdef ENABLE_LOWLEVEL_FUNCTION
+printf("Invalid length\n"); return dst;
+    #endif
+
+
+  }
+
+   if (src == dst) {
+     #ifdef ENABLE_LOWLEVEL_FUNCTION
+printf("Source and Destination are same\n" );
+     #endif
+
+
+     return dst;
+   }
+
+  size_t i;
+
+  for(i = 0; i < length; i++ ){
+     *(dst + i) = *(src + i);
+   }
+   #ifdef ENABLE_LOWLEVEL_FUNCTION
+printf("%zu elements copied succesfully\n",length );
+   #endif
+
+
+  return dst;
+}
+
+
+uint8_t* my_memset(uint8_t* src, size_t length , uint8_t value){
+
+  //Null source or destination pointer
+  if (src == NULL) {
+    #ifdef ENABLE_LOWLEVEL_FUNCTION
+printf("Invalid Source Address, memset aborted\n");
+    #endif
+
+
+  return src;
+  }
+
+  //Length <=0
+  if(length <= 0) {
+    #ifdef ENABLE_LOWLEVEL_FUNCTION
+printf("Invalid Length. memset aborted\n");
+    #endif
+
+
+    return src;
+  }
+size_t i;
+for(i = 0; i < length; i++){
+
+  *(src + i) = value ;
+}
+#ifdef ENABLE_LOWLEVEL_FUNCTION
+printf("%zu elements set succesfully\n",length );
+#endif
+
+
+return src;
+
+}
+
+
+uint8_t* my_memzero(uint8_t* src, size_t length){
+  //Null source or destination pointer
+  if (src == NULL) {
+    #ifdef ENABLE_LOWLEVEL_FUNCTION
+  printf("Invalid Source Address, memzero aborted\n");
+    #endif
+
+
+  return src;
+  }
+
+  //Length =0
+  if(length <= 0) {
+    #ifdef ENABLE_LOWLEVEL_FUNCTION
+  printf("Invalid length. memzero aborted\n");
+    #endif
+
+
+    return src;
+  }
+size_t i;
+for(i = 0; i < length; i++){
+
+  *(src + i) = 0 ;
+}
+#ifdef ENABLE_LOWLEVEL_FUNCTION
+printf("%zu elements set succesfully\n",length );
+#endif
+
+
+return src;
+
+}
+
+
+uint8_t* my_reverse(uint8_t* src, size_t length){
+
+  if (src == NULL) {
+    #ifdef ENABLE_LOWLEVEL_FUNCTION
+printf("Invalid Source Address, memreverse aborted\n");
+    #endif
+
+
+  return src;
+  }
+
+  //Length <=0
+  if(length <= 0) {
+    #ifdef ENABLE_LOWLEVEL_FUNCTION
+  printf("Invalid length. memreverse aborted\n");
+    #endif
+
+
+    return src;
+  }
+
+uint8_t* temp_ptr = (uint8_t*)malloc(1);
+if (temp_ptr == NULL) {
+  #ifdef ENABLE_LOWLEVEL_FUNCTION
+printf("Malloc Failed\n");
+  #endif
+
+
+return NULL;}
+
+size_t i=0;
+while( (src + i)  <  (src + length - 1 - i) ){
+
+*temp_ptr = *(src + length  -1 - i);
+*(src + length  -1 - i) = *(src + i);
+*(src + i) = *temp_ptr;
+i++;
+}
+return src;
+}
+
+
+int32_t* reserve_words(size_t length){
+
+int32_t* ptr;
+uint8_t word_size = sizeof(int32_t*);//size of a word in bytes.
+ptr = (int32_t*)malloc(length * word_size);
+if (ptr == NULL) {
+#ifdef ENABLE_LOWLEVEL_FUNCTION
+printf("Malloc Failed\n");
+#endif
+}
+#ifdef ENABLE_LOWLEVEL_FUNCTION
+else {
+printf("%zu bytes of Memory reserved\n", length * word_size);
+}
+#endif
+return ptr;
+
+}
+
+
+void free_words(int32_t* src ){
+if (src == NULL) {
+  #ifdef ENABLE_LOWLEVEL_FUNCTION
+  printf("NULL Source Address\n");
+  #endif
+}
+else {
+  free(src);
+#ifdef ENABLE_LOWLEVEL_FUNCTION
+printf("Memory Freed succesfully\n");
+#endif
+}
+}
+/******************************************************************************
+ * Copyright (C) 2017 by Alex Fosdick - University of Colorado
+ *
+ * Redistribution, modification or use of this software in source or binary
+ * forms is permitted as long as the files maintain this copyright. Users are
+ * permitted to modify this and use it to learn about the field of embedded
+ * software. Alex Fosdick and the University of Colorado are not liable for any
+ * misuse of this material.
+ *
+ *****************************************************************************/
+/**
+ * @file project1_test.c
+ * @brief This file is to be used to project 1.
+ *
+ * @author Alex Fosdick
+ * @date April 2, 2017
+ *
+ */
+
+#include <stdio.h>
+#include <stdint.h>
+#include "platform.h"
+#include "project1.h"
+#include "memory.h"
+#include "conversion.h"
+#include "debug.h"
+#define BASE_16 (16)
+#define BASE_10 (10)
+
+int8_t test_data1() {
+  uint8_t * ptr;
+  int32_t num = -4096;
+  uint32_t digits;
+  int32_t value;
+#ifdef ENABLE_LOWLEVEL_FUNCTION
+  printf("\ntest_data1();\n");
+#endif
+
+  ptr = (uint8_t*) reserve_words( DATA_SET_SIZE_W );
+
+  if (! ptr )
+  {
+    return TEST_ERROR;
+  }
+
+  digits = my_itoa( num, ptr, BASE_16);
+  value = my_atoi( ptr, digits, BASE_16);
+  #ifdef VERBOSE
+  #ifdef ENABLE_LOWLEVEL_FUNCTION
+  printf("  Initial number: %d\n", num);
+  printf("  Final Decimal number: %d\n", value);
+  #endif
+
+
+  #endif
+  free_words( (uint32_t*)ptr );
+
+  if ( value != num )
+  {
+    return TEST_ERROR;
+  }
+  return TEST_NO_ERROR;
+}
+
+int8_t test_data2() {
+  uint8_t * ptr;
+  int32_t num = 123456;
+  uint32_t digits;
+  int32_t value;
+  #ifdef ENABLE_LOWLEVEL_FUNCTION
+  printf("test_data2();\n");
+  #endif
+
+
+  ptr = (uint8_t*) reserve_words( DATA_SET_SIZE_W );
+
+  if (! ptr )
+  {
+    return TEST_ERROR;
+  }
+
+  digits = my_itoa( num, ptr, BASE_10);
+  value = my_atoi( ptr, digits, BASE_10);
+  #ifdef VERBOSE
+  #ifdef ENABLE_LOWLEVEL_FUNCTION
+  printf("  Initial Decimal number: %d\n", num);
+  printf("  Final Decimal number: %d\n", value);
+  #endif
+
+
+  #endif
+  free_words( (uint32_t*)ptr );
+
+  if ( value != num )
+  {
+    return TEST_ERROR;
+  }
+  return TEST_NO_ERROR;
+}
+
+int8_t test_memmove1() {
+  uint8_t i;
+  int8_t ret = TEST_NO_ERROR;
+  uint8_t * set;
+  uint8_t * ptra;
+  uint8_t * ptrb;
+  #ifdef ENABLE_LOWLEVEL_FUNCTION
+  printf("test_memmove1() - NO OVERLAP\n");
+  #endif
+
+
+  set = (uint8_t*) reserve_words( MEM_SET_SIZE_W );
+
+  if (! set )
+  {
+    return TEST_ERROR;
+  }
+
+  ptra = &set[0];
+  ptrb = &set[16];
+
+  /* Initialize the set to test values */
+  for( i = 0; i < MEM_SET_SIZE_B; i++)
+  {
+    set[i] = i;
+  }
+
+  print_memory(set, MEM_SET_SIZE_B);
+  my_memmove(ptra, ptrb, TEST_MEMMOVE_LENGTH);
+  print_memory(set, MEM_SET_SIZE_B);
+
+  for (i = 0; i < TEST_MEMMOVE_LENGTH; i++)
+  {
+    if (set[i + 16] != i)
+    {
+      ret = TEST_ERROR;
+    }
+  }
+
+  free_words( (uint32_t*)set );
+  return ret;
+}
+
+int8_t test_memmove2() {
+  uint8_t i;
+  int8_t ret = TEST_NO_ERROR;
+  uint8_t * set;
+  uint8_t * ptra;
+  uint8_t * ptrb;
+  #ifdef ENABLE_LOWLEVEL_FUNCTION
+  printf("test_memmove2() -OVERLAP END OF SRC BEGINNING OF DST\n");
+  #endif
+
+
+  set = (uint8_t*) reserve_words(MEM_SET_SIZE_B);
+
+  if (! set )
+  {
+    return TEST_ERROR;
+  }
+  ptra = &set[0];
+  ptrb = &set[8];//correcting set[8] to set[7]
+
+  /* Initialize the set to test values */
+  for( i = 0; i < MEM_SET_SIZE_B; i++) {
+    set[i] = i;
+  }
+
+  print_memory(set, MEM_SET_SIZE_B);
+  my_memmove(ptra, ptrb, TEST_MEMMOVE_LENGTH);
+  print_memory(set, MEM_SET_SIZE_B);
+
+  for (i = 0; i < TEST_MEMMOVE_LENGTH; i++)
+  {
+    if (set[i + 8] != i)
+    {
+      ret = TEST_ERROR;
+    }
+  }
+
+  free_words( (uint32_t*)set );
+  return ret;
+}
+
+int8_t test_memmove3() {
+  uint8_t i;
+  int8_t ret = TEST_NO_ERROR;
+  uint8_t * set;
+  uint8_t * ptra;
+  uint8_t * ptrb;
+  #ifdef ENABLE_LOWLEVEL_FUNCTION
+printf("test_memove3() - OVERLAP END OF DEST BEGINNING OF SRC\n");
+  #endif
+
+
+  set = (uint8_t*)reserve_words( MEM_SET_SIZE_W);
+
+  if (! set )
+  {
+    return TEST_ERROR;
+  }
+  ptra = &set[8];
+  ptrb = &set[0];
+
+  /* Initialize the set to test values */
+  for( i = 0; i < MEM_SET_SIZE_B; i++)
+  {
+    set[i] = i;
+  }
+
+  print_memory(set, MEM_SET_SIZE_B);
+  my_memmove(ptra, ptrb, TEST_MEMMOVE_LENGTH);
+  print_memory(set, MEM_SET_SIZE_B);
+
+  for (i = 0; i < TEST_MEMMOVE_LENGTH; i++)
+  {
+    if (set[i] != (i + 8))
+    {
+      ret = TEST_ERROR;
+    }
+  }
+
+
+  free_words( (uint32_t*)set );
+  return ret;
+
+}
+
+int8_t test_memcpy() {
+  uint8_t i;
+  int8_t ret = TEST_NO_ERROR;
+  uint8_t * set;
+  uint8_t * ptra;
+  uint8_t * ptrb;
+  #ifdef ENABLE_LOWLEVEL_FUNCTION
+printf("test_memcpy()\n");
+  #endif
+
+
+  set = (uint8_t*) reserve_words(MEM_SET_SIZE_W);
+
+  if (! set )
+  {
+    return TEST_ERROR;
+  }
+  ptra = &set[0];
+  ptrb = &set[16];
+
+  /* Initialize the set to test values */
+  for( i = 0; i < MEM_SET_SIZE_B; i++) {
+    set[i] = i;
+  }
+
+  print_memory(set, MEM_SET_SIZE_B);
+  my_memcopy(ptra, ptrb, TEST_MEMMOVE_LENGTH);
+  print_memory(set, MEM_SET_SIZE_B);
+
+  for (i = 0; i < TEST_MEMMOVE_LENGTH; i++)
+  {
+    if (set[i+16] != i)
+    {
+      ret = TEST_ERROR;
+    }
+  }
+
+  free_words( (uint32_t*)set );
+  return ret;
+}
+
+int8_t test_memset()
+{
+  uint8_t i;
+  uint8_t ret = TEST_NO_ERROR;
+  uint8_t * set;
+  uint8_t * ptra;
+  uint8_t * ptrb;
+  #ifdef ENABLE_LOWLEVEL_FUNCTION
+  printf("test_memset()\n");
+  #endif
+
+
+  set = (uint8_t*)reserve_words(MEM_SET_SIZE_W);
+  if (! set )
+  {
+    return TEST_ERROR;
+  }
+  ptra = &set[0];
+  ptrb = &set[16];
+
+  /* Initialize the set to test values */
+  for( i = 0; i < MEM_SET_SIZE_B; i++)
+  {
+    set[i] = i;
+  }
+
+  print_memory(set, MEM_SET_SIZE_B);
+  my_memset(ptra, MEM_SET_SIZE_B, 0xFF);
+  print_memory(set, MEM_SET_SIZE_B);
+  my_memzero(ptrb, MEM_ZERO_LENGTH);
+  print_memory(set, MEM_SET_SIZE_B);
+
+  /* Validate Set & Zero Functionality */
+  for (i = 0; i < MEM_ZERO_LENGTH; i++)
+  {
+    if (set[i] != 0xFF)
+    {
+      ret = TEST_ERROR;
+    }
+    if (set[16 + i] != 0)
+    {
+      ret = TEST_ERROR;
+    }
+  }
+
+  free_words( (uint32_t*)set );
+  return ret;
+}
+
+int8_t test_reverse()
+{
+  uint8_t i;
+  int8_t ret = TEST_NO_ERROR;
+  uint8_t * copy;
+  uint8_t set[MEM_SET_SIZE_B] = {0x3F, 0x73, 0x72, 0x33, 0x54, 0x43, 0x72, 0x26,
+                                 0x48, 0x63, 0x20, 0x66, 0x6F, 0x00, 0x20, 0x33,
+                                 0x72, 0x75, 0x74, 0x78, 0x21, 0x4D, 0x20, 0x40,
+                                 0x20, 0x24, 0x7C, 0x20, 0x24, 0x69, 0x68, 0x54
+                               };
+
+#ifdef ENABLE_LOWLEVEL_FUNCTION
+  printf("test_reverse()\n");
+#endif
+
+
+  copy = (uint8_t*)reserve_words(MEM_SET_SIZE_W);
+  if (! copy )
+  {
+    return TEST_ERROR;
+  }
+
+  my_memcopy(set, copy, MEM_SET_SIZE_B);
+
+  print_memory(set, MEM_SET_SIZE_B);
+  my_reverse(set, MEM_SET_SIZE_B);
+  print_memory(set, MEM_SET_SIZE_B);
+
+  for (i = 0; i < MEM_SET_SIZE_B; i++)
+  {
+    if (set[i] != copy[MEM_SET_SIZE_B - i - 1])
+    {
+      ret = TEST_ERROR;
+    }
+  }
+
+  free_words( (uint32_t*)copy );
+  return ret;
+}
+
+void project1(void)
+{
+  uint8_t i;
+  int8_t failed = 0;
+  int8_t results[TESTCOUNT];
+
+  results[0] = test_data1();
+  results[1] = test_data2();
+  results[2] = test_memmove1();
+  results[3] = test_memmove2();
+  results[4] = test_memmove3();
+  results[5] = test_memcpy();
+  results[6] = test_memset();
+  results[7] = test_reverse();
+
+  for ( i = 0; i < TESTCOUNT; i++)
+  {
+    #ifdef ENABLE_LOWLEVEL_FUNCTION
+    if(results[i] == 1) printf("Test%d Failed\n",i);
+    if(results[i] == 0) printf("Test%d Passed\n",i);
+    #endif
+
+
+    failed += results[i];
+  }
+  #ifdef ENABLE_LOWLEVEL_FUNCTION
+  printf("--------------------------------\n");
+  printf("Test Results:\n");
+  printf("  PASSED: %d / %d\n", (TESTCOUNT - failed), TESTCOUNT);
+  printf("  FAILED: %d / %d\n", failed, TESTCOUNT);
+  printf("--------------------------------\n");
+  #endif
+
+
+}
+/*
+** ###################################################################
+**     Processors:          MKL25Z128FM4
+**                          MKL25Z128FT4
+**                          MKL25Z128LH4
+**                          MKL25Z128VLK4
+**
+**     Compilers:           Keil ARM C/C++ Compiler
+**                          Freescale C/C++ for Embedded ARM
+**                          GNU C Compiler
+**                          GNU C Compiler - CodeSourcery Sourcery G++
+**                          IAR ANSI C/C++ Compiler for ARM
+**
+**     Reference manual:    KL25P80M48SF0RM, Rev.3, Sep 2012
+**     Version:             rev. 2.5, 2015-02-19
+**     Build:               b150220
+**
+**     Abstract:
+**         Provides a system configuration function and a global variable that
+**         contains the system frequency. It configures the device and initializes
+**         the oscillator (PLL) that is part of the microcontroller device.
+**
+**     Copyright (c) 2015 Freescale Semiconductor, Inc.
+**     All rights reserved.
+**
+**     Redistribution and use in source and binary forms, with or without modification,
+**     are permitted provided that the following conditions are met:
+**
+**     o Redistributions of source code must retain the above copyright notice, this list
+**       of conditions and the following disclaimer.
+**
+**     o Redistributions in binary form must reproduce the above copyright notice, this
+**       list of conditions and the following disclaimer in the documentation and/or
+**       other materials provided with the distribution.
+**
+**     o Neither the name of Freescale Semiconductor, Inc. nor the names of its
+**       contributors may be used to endorse or promote products derived from this
+**       software without specific prior written permission.
+**
+**     THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+**     ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+**     WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+**     DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+**     ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+**     (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+**     LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+**     ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+**     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+**     SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**
+**     http:                 www.freescale.com
+**     mail:                 support@freescale.com
+**
+**     Revisions:
+**     - rev. 1.0 (2012-06-13)
+**         Initial version.
+**     - rev. 1.1 (2012-06-21)
+**         Update according to reference manual rev. 1.
+**     - rev. 1.2 (2012-08-01)
+**         Device type UARTLP changed to UART0.
+**     - rev. 1.3 (2012-10-04)
+**         Update according to reference manual rev. 3.
+**     - rev. 1.4 (2012-11-22)
+**         MCG module - bit LOLS in MCG_S register renamed to LOLS0.
+**         NV registers - bit EZPORT_DIS in NV_FOPT register removed.
+**     - rev. 1.5 (2013-04-05)
+**         Changed start of doxygen comment.
+**     - rev. 2.0 (2013-10-29)
+**         Register accessor macros added to the memory map.
+**         Symbols for Processor Expert memory map compatibility added to the memory map.
+**         Startup file for gcc has been updated according to CMSIS 3.2.
+**         System initialization updated.
+**     - rev. 2.1 (2014-07-16)
+**         Module access macro module_BASES replaced by module_BASE_PTRS.
+**         System initialization and startup updated.
+**     - rev. 2.2 (2014-08-22)
+**         System initialization updated - default clock config changed.
+**     - rev. 2.3 (2014-08-28)
+**         Update of startup files - possibility to override DefaultISR added.
+**     - rev. 2.4 (2014-10-14)
+**         Interrupt INT_LPTimer renamed to INT_LPTMR0.
+**     - rev. 2.5 (2015-02-19)
+**         Renamed interrupt vector LLW to LLWU.
+**
+** ###################################################################
+*/
+
+/*!
+ * @file MKL25Z4
+ * @version 2.5
+ * @date 2015-02-19
+ * @brief Device specific configuration file for MKL25Z4 (implementation file)
+ *
+ * Provides a system configuration function and a global variable that contains
+ * the system frequency. It configures the device and initializes the oscillator
+ * (PLL) that is part of the microcontroller device.
+ */
+
+#include <stdint.h>
+#include "MKL25Z4.h"
+
+
+
+/* ----------------------------------------------------------------------------
+   -- Core clock
+   ---------------------------------------------------------------------------- */
+
+uint32_t SystemCoreClock = DEFAULT_SYSTEM_CLOCK;
+
+/* ----------------------------------------------------------------------------
+   -- SystemInit()
+   ---------------------------------------------------------------------------- */
+
+void SystemInit (void) {
+#if (DISABLE_WDOG)
+  /* SIM_COPC: COPT=0,COPCLKS=0,COPW=0 */
+  SIM->COPC = (uint32_t)0x00u;
+#endif /* (DISABLE_WDOG) */
+#ifdef CLOCK_SETUP
+  if((RCM->SRS0 & RCM_SRS0_WAKEUP_MASK) != 0x00U)
+  {
+    if((PMC->REGSC & PMC_REGSC_ACKISO_MASK) != 0x00U)
+    {
+       PMC->REGSC |= PMC_REGSC_ACKISO_MASK; /* Release hold with ACKISO:  Only has an effect if recovering from VLLSx.*/
+    }
+  }
+
+  /* Power mode protection initialization */
+#ifdef SYSTEM_SMC_PMPROT_VALUE
+  SMC->PMPROT = SYSTEM_SMC_PMPROT_VALUE;
+#endif
+
+  /* System clock initialization */
+  /* Internal reference clock trim initialization */
+#if defined(SLOW_TRIM_ADDRESS)
+  if ( *((uint8_t*)SLOW_TRIM_ADDRESS) != 0xFFU) {                              /* Skip if non-volatile flash memory is erased */
+    MCG->C3 = *((uint8_t*)SLOW_TRIM_ADDRESS);
+  #endif /* defined(SLOW_TRIM_ADDRESS) */
+  #if defined(SLOW_FINE_TRIM_ADDRESS)
+    MCG->C4 = (MCG->C4 & ~(MCG_C4_SCFTRIM_MASK)) | ((*((uint8_t*) SLOW_FINE_TRIM_ADDRESS)) & MCG_C4_SCFTRIM_MASK);
+  #endif
+  #if defined(FAST_TRIM_ADDRESS)
+    MCG->C4 = (MCG->C4 & ~(MCG_C4_FCTRIM_MASK)) |((*((uint8_t*) FAST_TRIM_ADDRESS)) & MCG_C4_FCTRIM_MASK);
+  #endif
+#if defined(SLOW_TRIM_ADDRESS)
+  }
+  #endif /* defined(SLOW_TRIM_ADDRESS) */
+
+  /* Set system prescalers and clock sources */
+  SIM->CLKDIV1 = SYSTEM_SIM_CLKDIV1_VALUE; /* Set system prescalers */
+  SIM->SOPT1 = ((SIM->SOPT1) & (uint32_t)(~(SIM_SOPT1_OSC32KSEL_MASK))) | ((SYSTEM_SIM_SOPT1_VALUE) & (SIM_SOPT1_OSC32KSEL_MASK)); /* Set 32 kHz clock source (ERCLK32K) */
+  SIM->SOPT2 = ((SIM->SOPT2) & (uint32_t)(~(SIM_SOPT2_PLLFLLSEL_MASK))) | ((SYSTEM_SIM_SOPT2_VALUE) & (SIM_SOPT2_PLLFLLSEL_MASK)); /* Selects the high frequency clock for various peripheral clocking options. */
+  SIM->SOPT2 = ((SIM->SOPT2) & (uint32_t)(~(SIM_SOPT2_TPMSRC_MASK))) | ((SYSTEM_SIM_SOPT2_VALUE) & (SIM_SOPT2_TPMSRC_MASK)); /* Selects the clock source for the TPM counter clock. */
+#if ((MCG_MODE == MCG_MODE_FEI) || (MCG_MODE == MCG_MODE_FBI) || (MCG_MODE == MCG_MODE_BLPI))
+  /* Set MCG and OSC */
+#if  ((((SYSTEM_OSC0_CR_VALUE) & OSC_CR_ERCLKEN_MASK) != 0x00U) || (((SYSTEM_MCG_C5_VALUE) & MCG_C5_PLLCLKEN0_MASK) != 0x00U))
+  /* SIM_SCGC5: PORTA=1 */
+  SIM_SCGC5 |= SIM_SCGC5_PORTA_MASK;
+  /* PORTA_PCR18: ISF=0,MUX=0 */
+  PORTA_PCR18 &= (uint32_t)~(uint32_t)((PORT_PCR_ISF_MASK | PORT_PCR_MUX(0x07)));
+  if (((SYSTEM_MCG_C2_VALUE) & MCG_C2_EREFS0_MASK) != 0x00U) {
+  /* PORTA_PCR19: ISF=0,MUX=0 */
+  PORTA_PCR19 &= (uint32_t)~(uint32_t)((PORT_PCR_ISF_MASK | PORT_PCR_MUX(0x07)));
+  }
+#endif
+  MCG->SC = SYSTEM_MCG_SC_VALUE;       /* Set SC (fast clock internal reference divider) */
+  MCG->C1 = SYSTEM_MCG_C1_VALUE;       /* Set C1 (clock source selection, FLL ext. reference divider, int. reference enable etc.) */
+  /* Check that the source of the FLL reference clock is the requested one. */
+  if (((SYSTEM_MCG_C1_VALUE) & MCG_C1_IREFS_MASK) != 0x00U) {
+    while((MCG->S & MCG_S_IREFST_MASK) == 0x00U) {
+    }
+  } else {
+    while((MCG->S & MCG_S_IREFST_MASK) != 0x00U) {
+    }
+  }
+  MCG->C2 = (SYSTEM_MCG_C2_VALUE) & (uint8_t)(~(MCG_C2_LP_MASK)); /* Set C2 (freq. range, ext. and int. reference selection etc.; low power bit is set later) */
+  MCG->C4 = ((SYSTEM_MCG_C4_VALUE) & (uint8_t)(~(MCG_C4_FCTRIM_MASK | MCG_C4_SCFTRIM_MASK))) | (MCG->C4 & (MCG_C4_FCTRIM_MASK | MCG_C4_SCFTRIM_MASK)); /* Set C4 (FLL output; trim values not changed) */
+  OSC0->CR = SYSTEM_OSC0_CR_VALUE;     /* Set OSC_CR (OSCERCLK enable, oscillator capacitor load) */
+  #if (MCG_MODE == MCG_MODE_BLPI)
+  /* BLPI specific */
+  MCG->C2 |= (MCG_C2_LP_MASK);         /* Disable FLL and PLL in bypass mode */
+  #endif
+
+#else /* MCG_MODE */
+  /* Set MCG and OSC */
+  /* SIM_SCGC5: PORTA=1 */
+  SIM_SCGC5 |= SIM_SCGC5_PORTA_MASK;
+  /* PORTA_PCR18: ISF=0,MUX=0 */
+  PORTA_PCR18 &= (uint32_t)~(uint32_t)((PORT_PCR_ISF_MASK | PORT_PCR_MUX(0x07)));
+  if (((SYSTEM_MCG_C2_VALUE) & MCG_C2_EREFS0_MASK) != 0x00U) {
+  /* PORTA_PCR19: ISF=0,MUX=0 */
+  PORTA_PCR19 &= (uint32_t)~(uint32_t)((PORT_PCR_ISF_MASK | PORT_PCR_MUX(0x07)));
+  }
+  MCG->SC = SYSTEM_MCG_SC_VALUE;       /* Set SC (fast clock internal reference divider) */
+  MCG->C2 = (SYSTEM_MCG_C2_VALUE) & (uint8_t)(~(MCG_C2_LP_MASK)); /* Set C2 (freq. range, ext. and int. reference selection etc.; low power bit is set later) */
+  OSC0->CR = SYSTEM_OSC0_CR_VALUE;     /* Set OSC_CR (OSCERCLK enable, oscillator capacitor load) */
+  #if (MCG_MODE == MCG_MODE_PEE)
+  MCG->C1 = (SYSTEM_MCG_C1_VALUE) | MCG_C1_CLKS(0x02); /* Set C1 (clock source selection, FLL ext. reference divider, int. reference enable etc.) - PBE mode*/
+  #else
+  MCG->C1 = SYSTEM_MCG_C1_VALUE;       /* Set C1 (clock source selection, FLL ext. reference divider, int. reference enable etc.) */
+  #endif
+  if (((SYSTEM_MCG_C2_VALUE) & MCG_C2_EREFS0_MASK) != 0x00U) {
+    while((MCG->S & MCG_S_OSCINIT0_MASK) == 0x00U) { /* Check that the oscillator is running */
+    }
+  }
+  /* Check that the source of the FLL reference clock is the requested one. */
+  if (((SYSTEM_MCG_C1_VALUE) & MCG_C1_IREFS_MASK) != 0x00U) {
+    while((MCG->S & MCG_S_IREFST_MASK) == 0x00U) {
+    }
+  } else {
+    while((MCG->S & MCG_S_IREFST_MASK) != 0x00U) {
+    }
+  }
+  MCG->C4 = ((SYSTEM_MCG_C4_VALUE)  & (uint8_t)(~(MCG_C4_FCTRIM_MASK | MCG_C4_SCFTRIM_MASK))) | (MCG->C4 & (MCG_C4_FCTRIM_MASK | MCG_C4_SCFTRIM_MASK)); /* Set C4 (FLL output; trim values not changed) */
+#endif /* MCG_MODE */
+
+  /* Common for all MCG modes */
+
+  /* PLL clock can be used to generate clock for some devices regardless of clock generator (MCGOUTCLK) mode. */
+  MCG->C5 = (SYSTEM_MCG_C5_VALUE) & (uint8_t)(~(MCG_C5_PLLCLKEN0_MASK)); /* Set C5 (PLL settings, PLL reference divider etc.) */
+  MCG->C6 = (SYSTEM_MCG_C6_VALUE) & (uint8_t)~(MCG_C6_PLLS_MASK); /* Set C6 (PLL select, VCO divider etc.) */
+  if ((SYSTEM_MCG_C5_VALUE) & MCG_C5_PLLCLKEN0_MASK) {
+    MCG->C5 |= MCG_C5_PLLCLKEN0_MASK;  /* PLL clock enable in mode other than PEE or PBE */
+  }
+  /* BLPE, PEE and PBE MCG mode specific */
+
+#if (MCG_MODE == MCG_MODE_BLPE)
+  MCG->C2 |= (MCG_C2_LP_MASK);         /* Disable FLL and PLL in bypass mode */
+#elif ((MCG_MODE == MCG_MODE_PBE) || (MCG_MODE == MCG_MODE_PEE))
+  MCG->C6 |= (MCG_C6_PLLS_MASK);       /* Set C6 (PLL select, VCO divider etc.) */
+  while((MCG->S & MCG_S_LOCK0_MASK) == 0x00U) { /* Wait until PLL is locked*/
+  }
+  #if (MCG_MODE == MCG_MODE_PEE)
+  MCG->C1 &= (uint8_t)~(MCG_C1_CLKS_MASK);
+  #endif
+#endif
+#if ((MCG_MODE == MCG_MODE_FEI) || (MCG_MODE == MCG_MODE_FEE))
+  while((MCG->S & MCG_S_CLKST_MASK) != 0x00U) { /* Wait until output of the FLL is selected */
+  }
+  /* Use LPTMR to wait for 1ms for FLL clock stabilization */
+  SIM_SCGC5 |= SIM_SCGC5_LPTMR_MASK;   /* Alow software control of LPMTR */
+  LPTMR0->CMR = LPTMR_CMR_COMPARE(0);  /* Default 1 LPO tick */
+  LPTMR0->CSR = (LPTMR_CSR_TCF_MASK | LPTMR_CSR_TPS(0x00));
+  LPTMR0->PSR = (LPTMR_PSR_PCS(0x01) | LPTMR_PSR_PBYP_MASK); /* Clock source: LPO, Prescaler bypass enable */
+  LPTMR0->CSR = LPTMR_CSR_TEN_MASK;    /* LPMTR enable */
+  while((LPTMR0_CSR & LPTMR_CSR_TCF_MASK) == 0u) {
+  }
+  LPTMR0_CSR = 0x00;                   /* Disable LPTMR */
+  SIM_SCGC5 &= (uint32_t)~(uint32_t)SIM_SCGC5_LPTMR_MASK;
+#elif ((MCG_MODE == MCG_MODE_FBI) || (MCG_MODE == MCG_MODE_BLPI))
+  while((MCG->S & MCG_S_CLKST_MASK) != 0x04U) { /* Wait until internal reference clock is selected as MCG output */
+  }
+#elif ((MCG_MODE == MCG_MODE_FBE) || (MCG_MODE == MCG_MODE_PBE) || (MCG_MODE == MCG_MODE_BLPE))
+  while((MCG->S & MCG_S_CLKST_MASK) != 0x08U) { /* Wait until external reference clock is selected as MCG output */
+  }
+#elif (MCG_MODE == MCG_MODE_PEE)
+  while((MCG->S & MCG_S_CLKST_MASK) != 0x0CU) { /* Wait until output of the PLL is selected */
+  }
+#endif
+#if (((SYSTEM_SMC_PMCTRL_VALUE) & SMC_PMCTRL_RUNM_MASK) == (0x02U << SMC_PMCTRL_RUNM_SHIFT))
+  SMC->PMCTRL = (uint8_t)((SYSTEM_SMC_PMCTRL_VALUE) & (SMC_PMCTRL_RUNM_MASK)); /* Enable VLPR mode */
+  while(SMC->PMSTAT != 0x04U) {        /* Wait until the system is in VLPR mode */
+  }
+#endif
+
+  /* PLL loss of lock interrupt request initialization */
+  if (((SYSTEM_MCG_C6_VALUE) & MCG_C6_LOLIE0_MASK) != 0U) {
+    NVIC_EnableIRQ(MCG_IRQn);          /* Enable PLL loss of lock interrupt request */
+  }
+#endif
+}
+
+/* ----------------------------------------------------------------------------
+   -- SystemCoreClockUpdate()
+   ---------------------------------------------------------------------------- */
+
+void SystemCoreClockUpdate (void) {
+  uint32_t MCGOUTClock;                /* Variable to store output clock frequency of the MCG module */
+  uint16_t Divider;
+
+  if ((MCG->C1 & MCG_C1_CLKS_MASK) == 0x00U) {
+    /* Output of FLL or PLL is selected */
+    if ((MCG->C6 & MCG_C6_PLLS_MASK) == 0x00U) {
+      /* FLL is selected */
+      if ((MCG->C1 & MCG_C1_IREFS_MASK) == 0x00U) {
+        /* External reference clock is selected */
+        MCGOUTClock = CPU_XTAL_CLK_HZ; /* System oscillator drives MCG clock */
+        if ((MCG->C2 & MCG_C2_RANGE0_MASK) != 0x00U) {
+          switch (MCG->C1 & MCG_C1_FRDIV_MASK) {
+          case 0x38U:
+            Divider = 1536U;
+            break;
+          case 0x30U:
+            Divider = 1280U;
+            break;
+          default:
+            Divider = (uint16_t)(32LU << ((MCG->C1 & MCG_C1_FRDIV_MASK) >> MCG_C1_FRDIV_SHIFT));
+            break;
+          }
+        } else {/* ((MCG->C2 & MCG_C2_RANGE_MASK) != 0x00U) */
+          Divider = (uint16_t)(1LU << ((MCG->C1 & MCG_C1_FRDIV_MASK) >> MCG_C1_FRDIV_SHIFT));
+        }
+        MCGOUTClock = (MCGOUTClock / Divider); /* Calculate the divided FLL reference clock */
+      } else { /* (!((MCG->C1 & MCG_C1_IREFS_MASK) == 0x00U)) */
+        MCGOUTClock = CPU_INT_SLOW_CLK_HZ; /* The slow internal reference clock is selected */
+      } /* (!((MCG->C1 & MCG_C1_IREFS_MASK) == 0x00U)) */
+      /* Select correct multiplier to calculate the MCG output clock  */
+      switch (MCG->C4 & (MCG_C4_DMX32_MASK | MCG_C4_DRST_DRS_MASK)) {
+        case 0x00U:
+          MCGOUTClock *= 640U;
+          break;
+        case 0x20U:
+          MCGOUTClock *= 1280U;
+          break;
+        case 0x40U:
+          MCGOUTClock *= 1920U;
+          break;
+        case 0x60U:
+          MCGOUTClock *= 2560U;
+          break;
+        case 0x80U:
+          MCGOUTClock *= 732U;
+          break;
+        case 0xA0U:
+          MCGOUTClock *= 1464U;
+          break;
+        case 0xC0U:
+          MCGOUTClock *= 2197U;
+          break;
+        case 0xE0U:
+          MCGOUTClock *= 2929U;
+          break;
+        default:
+          break;
+      }
+    } else { /* (!((MCG->C6 & MCG_C6_PLLS_MASK) == 0x00U)) */
+      /* PLL is selected */
+      Divider = (((uint16_t)MCG->C5 & MCG_C5_PRDIV0_MASK) + 0x01U);
+      MCGOUTClock = (uint32_t)(CPU_XTAL_CLK_HZ / Divider); /* Calculate the PLL reference clock */
+      Divider = (((uint16_t)MCG->C6 & MCG_C6_VDIV0_MASK) + 24U);
+      MCGOUTClock *= Divider;          /* Calculate the MCG output clock */
+    } /* (!((MCG->C6 & MCG_C6_PLLS_MASK) == 0x00U)) */
+  } else if ((MCG->C1 & MCG_C1_CLKS_MASK) == 0x40U) {
+    /* Internal reference clock is selected */
+    if ((MCG->C2 & MCG_C2_IRCS_MASK) == 0x00U) {
+      MCGOUTClock = CPU_INT_SLOW_CLK_HZ; /* Slow internal reference clock selected */
+    } else { /* (!((MCG->C2 & MCG_C2_IRCS_MASK) == 0x00U)) */
+      Divider = (uint16_t)(0x01LU << ((MCG->SC & MCG_SC_FCRDIV_MASK) >> MCG_SC_FCRDIV_SHIFT));
+      MCGOUTClock = (uint32_t) (CPU_INT_FAST_CLK_HZ / Divider); /* Fast internal reference clock selected */
+    } /* (!((MCG->C2 & MCG_C2_IRCS_MASK) == 0x00U)) */
+  } else if ((MCG->C1 & MCG_C1_CLKS_MASK) == 0x80U) {
+    /* External reference clock is selected */
+    MCGOUTClock = CPU_XTAL_CLK_HZ;     /* System oscillator drives MCG clock */
+  } else { /* (!((MCG->C1 & MCG_C1_CLKS_MASK) == 0x80U)) */
+    /* Reserved value */
+    return;
+  } /* (!((MCG->C1 & MCG_C1_CLKS_MASK) == 0x80U)) */
+  SystemCoreClock = (MCGOUTClock / (0x01U + ((SIM->CLKDIV1 & SIM_CLKDIV1_OUTDIV1_MASK) >> SIM_CLKDIV1_OUTDIV1_SHIFT)));
+}
+/*******************************************************************************
+@file:uart.c
+@brief:function declarations for uart operation functions
+
+This file declares functions for implementing operations defined in uart.h
+@author:Ravi Dubey
+@date:10/22/2017
+*******************************************************************************/
+
+#include <stdlib.h>
+#include "uart.h"
+#include "MKL25Z4.h"
+
+UART_enum UART_configure(){
+
+uint32_t SBR;
+uint32_t OSR;
+
+
+//setting clock gating Registers
+SIM_SCGC5 |= SIM_SCGC5_PORTA_MASK; //enable GPIOA
+SIM_SCGC4 |= SIM_SCGC4_UART0_MASK; //Enable clocks to UART0 Module
+
+
+//Configure UART0 pins in Port Configuration Register.
+PORTA->PCR[1] |= PORT_PCR_MUX(0X02); //set PTA1 to UART)_RX
+PORTA->PCR[2] |= PORT_PCR_MUX(0X02); //set PTA2 to UART)_TX
+
+//Configure Tx pin as Output. All pins are input by default
+PTA_BASE_PTR->PDDR |= (uint32_t)(1<<2);
+
+/*clear UART C1,C2,C3,S2 Registers to disable txr & rxr and load default settings
+ie 8 data bits, no parity , 1 stop bit*/
+UART0_C2 = 0;  /**< UART Control Register 2, offset: 0x3 */
+UART0_C1 = 0;  /**< UART Control Register 1, offset: 0x2 */
+UART0_C3 = 0;  /**< UART Control Register 3, offset: 0x6 */
+//UART0_S2 = 0;  /**< UART Status Register 2, offset: 0x5 */
+
+//calculate the baud rate as 57600 for 48MHz clock
+uint16_t ubd = (uint16_t)( (48000*1000)/(5760*16) );
+
+//set the oversampling rate to 16
+UART0_C4 = UARTLP_C4_OSR(15);
+
+//set baud Rate
+UART0_BDH =  (ubd >> 8)&UARTLP_BDH_SBR_MASK; /**< UART Baud Rate Register High, offset: 0x0 */
+UART0_BDL =  (ubd & UARTLP_BDL_SBR_MASK);  /**< UART Baud Rate Register Low, offset: 0x1 */
+
+//Enable transmitter and rxr
+ UART0_C2  |= (uint32_t)(UARTLP_C2_RE_MASK | UARTLP_C2_TE_MASK);      /**< UART Control Register 2, offset: 0x3 */
+
+
+
+/*select 48 MHZ clock source in systems option register */
+SIM_SOPT2 &= ~SIM_SOPT2_UART0SRC_MASK;
+SIM_SOPT2 |= SIM_SOPT2_UART0SRC(1);
+
+}
+
+UART_enum UART_send(unsigned_byte* data_ptr){
+
+  //write data to data output register and it will be transmitted
+  //wait for rxr data ready flag of status register s1 and read data from data output register
+
+   while( !( UART0_S1 && (1<<8) ) ) ;       /**< UART Status Register 1, offset: 0x4 */
+   UART0_D = *data_ptr;            /**< UART Data Register, for both rxr and txr. offset: 0x7 */
+   return 0;
+}
+
+UART_enum UART_send_n(unsigned_byte* data_ptr,size_t num_bytes);
+
+UART_enum UART_receive(unsigned_byte* data_ptr) ;
+
+UART_enum UART_receive_n(unsigned_byte* data_ptr,size_t num_bytes);
+
+void UART0_IRQHandler();
