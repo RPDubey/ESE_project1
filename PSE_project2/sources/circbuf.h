@@ -10,19 +10,21 @@ circbuf.c
 *******************************************************************************/
 
 #include <stdint.h>
-
+#include <stdlib.h>
 #ifndef FILE_CIRCBUF
 #define FILE_CIRCBUF
 
 #define unsigned_byte uint8_t
+#define CB_SIZE 20
+
 
 typedef struct{
   unsigned_byte* buf_ptr;  //points to begining of buffer in memory
+  unsigned_byte* buf_top_ptr; //points to the end of buffer in memory
   unsigned_byte* head;     // where to add item
   unsigned_byte* tail;     //where to pop item
   size_t size;    //buffer size
   size_t count;   //current number of items on the buffer
-  unsigned_byte* buf_top_ptr; //points to the end of buffer in memory
 }CB_t;
 
 typedef enum{
@@ -104,13 +106,5 @@ This function takes pointer to the circular buffer to be destroyed
 *******************************************************************************/
 CB_enum CB_destroy(CB_t* CB_ptr);
 
-
-/*******************************************************************************
-@brief:Implements printinting CB functions returns
-This function takes return of type CB_enum
-@param:CB_enum type enum
-@return:void
-*******************************************************************************/
-void print_CB_enum(CB_enum);
 
 #endif
